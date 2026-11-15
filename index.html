@@ -215,6 +215,7 @@
                             <p>Ми вже готуємо ваше замовлення.</p>
                         </div>
                     `;
+                    setTimeout(function () { window.close(); }, 1500);
                 } else {
                     status.css('color', 'red').text('Помилка: ' + result.message);
                     btn.prop('disabled', false).text('Спробувати ще раз');
