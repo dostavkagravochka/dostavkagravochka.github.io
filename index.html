@@ -11,7 +11,7 @@
         .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 450px; }
         h2 { text-align: center; color: #333; margin-bottom: 20px; }
         .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; color: #666; font-weight: 500; }
+        label { display: block; margin-bottom: 5px; color: #727272; font-weight: 500; }
         input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
         button { width: 100%; padding: 15px; background: #28a745; color: white; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; transition: 0.3s; margin-top: 10px; }
         button:hover { background: #218838; }
@@ -22,17 +22,20 @@
         .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 45px; padding-left: 12px; }
         .select2-container--default .select2-selection--single .select2-selection__arrow { height: 45px; }
         .order-id-display { text-align: center; color: #888; font-size: 0.9em; margin-bottom: 20px; }
+        /* Ник вверху (клик = копирование) */
+        .nick-wrap { text-align: center; margin-bottom: 8px; }
+        #nickBtn { display: none; cursor: pointer; font-size: 12px; font-weight: bold; background: #eef6ff; padding: 3px 10px; border-radius: 6px; }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <div class="nick-wrap">
+        <span id="nickBtn" title="Натисни, щоб скопіювати"></span>
+    </div>
+
     <h2>🚚 Дані отримувача посилики</h2>
     <div class="order-id-display" id="orderIdDisplay">Завантаження...</div>
-    <div id="nickBox" style="display:none; align-items:center; justify-content:space-between; gap:10px; background:#eef6ff; border:1px solid #cfe2ff; border-radius:8px; padding:10px 12px; margin-bottom:20px;">
-    <span><span style="color:#666; font-size:0.85em;">Нік:</span> <b id="nickText"></b></span>
-    <button type="button" id="copyNickBtn" style="width:auto; margin:0; padding:8px 14px; font-size:14px;">📋 Копіювати</button>
-    </div>
 
     <form id="deliveryForm">
         <div class="form-group">
@@ -69,15 +72,12 @@
 
 <script>
     // --- НАСТРОЙКИ ---
-    // ТВОЙ НОВЫЙ БЕЗОПАСНЫЙ ВОРКЕР
-    const WORKER_URL = 'https://dostavkagravochka.brelok2023.workers.dev'; 
-    
-    // API KEY ЗДЕСЬ БОЛЬШЕ НЕТ. ОН СПРЯТАН ВНУТРИ ВОРКЕРА.
+    const WORKER_URL = 'https://dostavkagravochka.brelok2023.workers.dev';
 
     // --- ЛОГИКА ---
     const urlParams = new URLSearchParams(window.location.search);
     const orderId = urlParams.get('id');
-    
+
     let selectedCityRef = '';
     let selectedBranchRef = '';
 
@@ -88,68 +88,74 @@
             return;
         }
         $('#orderIdDisplay').text(`Замовлення №: ${orderId}`);
-                const nick = urlParams.get('nick');
+
+        // НИК ВВЕРХУ (клик = копирование)
+        const nick = urlParams.get('nick');
         if (nick) {
-            $('#nickText').text(nick);
-            $('#nickBox').css('display', 'flex');
-            $('#copyNickBtn').on('click', function () {
-                const btn = $(this);
-                const done = () => { btn.text('✅ Скопійовано'); setTimeout(() => btn.text('📋 Копіювати'), 1500); };
+            const nickBtn = $('#nickBtn');
+            nickBtn.text(nick).show();
+            nickBtn.on('click', function () {
+                const done = () => {
+                    nickBtn.text('✅ Скопійовано');
+                    setTimeout(() => nickBtn.text(nick), 1200);
+                };
                 if (navigator.clipboard && window.isSecureContext) {
                     navigator.clipboard.writeText(nick).then(done);
                 } else {
                     const ta = document.createElement('textarea');
-                    ta.value = nick; document.body.appendChild(ta); ta.select();
-                    document.execCommand('copy'); document.body.removeChild(ta); done();
+                    ta.value = nick;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    done();
                 }
             });
         }
 
-        // 1. ПОИСК ГОРОДА (Через твой Worker)
+        // 1. ПОИСК ГОРОДА (Через Worker)
         $('#citySelect').select2({
             placeholder: "Введіть назву міста...",
             minimumInputLength: 2,
             language: { inputTooShort: () => "Введіть хоча б 2 літери для пошуку..." },
             ajax: {
-                url: WORKER_URL, // Шлем запрос на твой воркер
+                url: WORKER_URL,
                 type: 'POST',
                 dataType: 'json',
                 delay: 500,
                 contentType: 'application/json',
                 data: function (params) {
                     return JSON.stringify({
-                        action: 'search_city', // Говорим воркеру "Ищи город"
+                        action: 'search_city',
                         term: params.term
                     });
                 },
                 processResults: function (data) {
-                    // Воркер вернет уже готовый массив или success:false
                     if (data.status === 'success' && data.data) {
-                         return { results: data.data };
+                        return { results: data.data };
                     }
                     return { results: [] };
                 }
             }
         });
 
-        // 2. ВЫБОР ОТДЕЛЕНИЯ (Через твой Worker)
+        // 2. ВЫБОР ОТДЕЛЕНИЯ (Через Worker)
         $('#citySelect').on('select2:select', function (e) {
-            selectedCityRef = e.params.data.id; // Сохраняем Ref города
+            selectedCityRef = e.params.data.id;
             $('#branchSelect').prop('disabled', true).empty().append('<option>Завантаження...</option>');
-            
-            // Запрашиваем отделения через Worker
+
             fetch(WORKER_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    action: 'get_branches', // Говорим воркеру "Дай отделения"
+                    action: 'get_branches',
                     city_ref: selectedCityRef
                 })
             })
             .then(res => res.json())
             .then(response => {
                 $('#branchSelect').empty().append('<option value="">Оберіть відділення...</option>');
-                if(response.status === 'success') {
+                if (response.status === 'success') {
                     response.data.forEach(branch => {
                         $('#branchSelect').append(`<option value="${branch.id}">${branch.text}</option>`);
                     });
@@ -169,17 +175,17 @@
             selectedBranchRef = $(this).val();
         });
 
-        // 3. ОТПРАВКА ДАННЫХ (Через твой Worker в Google Таблицу)
+        // 3. ОТПРАВКА ДАННЫХ (Через Worker в Google Таблицу)
         $('#deliveryForm').on('submit', async function(e) {
             e.preventDefault();
             const btn = $('#submitBtn');
             const status = $('#statusMessage');
-            
+
             btn.prop('disabled', true).text('Збереження...');
             status.text('');
 
             const payload = {
-                action: 'update_delivery', // Говорим воркеру "Отправь в Гугл"
+                action: 'update_delivery',
                 order_id: orderId,
                 fio: $('#fio').val().trim(),
                 phone: $('#phone').val().trim(),
