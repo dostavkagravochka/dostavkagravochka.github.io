@@ -29,6 +29,10 @@
 <div class="container">
     <h2>🚚 Дані отримувача посилики</h2>
     <div class="order-id-display" id="orderIdDisplay">Завантаження...</div>
+    <div id="nickBox" style="display:none; align-items:center; justify-content:space-between; gap:10px; background:#eef6ff; border:1px solid #cfe2ff; border-radius:8px; padding:10px 12px; margin-bottom:20px;">
+    <span><span style="color:#666; font-size:0.85em;">Нік:</span> <b id="nickText"></b></span>
+    <button type="button" id="copyNickBtn" style="width:auto; margin:0; padding:8px 14px; font-size:14px;">📋 Копіювати</button>
+    </div>
 
     <form id="deliveryForm">
         <div class="form-group">
@@ -67,6 +71,8 @@
     // --- НАСТРОЙКИ ---
     // ТВОЙ НОВЫЙ БЕЗОПАСНЫЙ ВОРКЕР
     const WORKER_URL = 'https://dostavkagravochka.brelok2023.workers.dev'; 
+    
+    // API KEY ЗДЕСЬ БОЛЬШЕ НЕТ. ОН СПРЯТАН ВНУТРИ ВОРКЕРА.
 
     // --- ЛОГИКА ---
     const urlParams = new URLSearchParams(window.location.search);
@@ -82,6 +88,22 @@
             return;
         }
         $('#orderIdDisplay').text(`Замовлення №: ${orderId}`);
+                const nick = urlParams.get('nick');
+        if (nick) {
+            $('#nickText').text(nick);
+            $('#nickBox').css('display', 'flex');
+            $('#copyNickBtn').on('click', function () {
+                const btn = $(this);
+                const done = () => { btn.text('✅ Скопійовано'); setTimeout(() => btn.text('📋 Копіювати'), 1500); };
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(nick).then(done);
+                } else {
+                    const ta = document.createElement('textarea');
+                    ta.value = nick; document.body.appendChild(ta); ta.select();
+                    document.execCommand('copy'); document.body.removeChild(ta); done();
+                }
+            });
+        }
 
         // 1. ПОИСК ГОРОДА (Через твой Worker)
         $('#citySelect').select2({
