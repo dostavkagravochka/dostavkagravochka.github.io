@@ -24,7 +24,8 @@
         .order-id-display { text-align: center; color: #888; font-size: 0.9em; margin-bottom: 20px; }
         /* Ник вверху (клик = копирование) */
         .nick-wrap { text-align: center; margin-bottom: 8px; }
-        #nickBtn { display: none; cursor: pointer; font-size: 18px; font-weight: bold; background: #eeeeee; padding: 3px 10px; border-radius: 6px; }
+        #nickBtn { display: none; cursor: pointer; font-size: 15px; font-weight: bold; background: #dfdede; padding: 3px 10px; border-radius: 6px; transition: transform 0.1s; user-select: none; }
+        #nickBtn.pressed { transform: scale(0.92); }
     </style>
 </head>
 <body>
@@ -96,8 +97,8 @@
             nickBtn.text(nick).css('display', 'inline-block');
             nickBtn.on('click', function () {
                 const done = () => {
-                    nickBtn.text('✅ Скопійовано');
-                    setTimeout(() => nickBtn.text(nick), 1200);
+                    nickBtn.addClass('pressed');
+                    setTimeout(() => nickBtn.removeClass('pressed'), 120);
                 };
                 if (navigator.clipboard && window.isSecureContext) {
                     navigator.clipboard.writeText(nick).then(done);
